@@ -1,4 +1,4 @@
-module github.dom/dylansong/gosync
+module github.com/dylansong/gosync
 
 go 1.23.3
 
