@@ -11,6 +11,11 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// 添加版本常量
+const (
+	Version = "v1.7.0"
+)
+
 // Config 结构体用于解析YAML配置
 type Config struct {
 	SyncConfigs []SyncConfig `yaml:"sync_configs"`
@@ -60,6 +65,7 @@ func main() {
 	// 定义命令行参数
 	configPath := flag.String("config", "config.yaml", "配置文件路径 (默认为当前目录下的 config.yaml)")
 	showExample := flag.Bool("example", false, "显示配置文件示例")
+	showVersion := flag.Bool("v", false, "显示版本信息")
 	
 	// 自定义 Usage 信息
 	flag.Usage = func() {
@@ -70,6 +76,12 @@ func main() {
 	}
 	
 	flag.Parse()
+
+	// 如果使用 -v 参数，显示版本信息后退出
+	if *showVersion {
+		fmt.Printf("gosync %s\n", Version)
+		return
+	}
 
 	// 如果使用 -example 参数，显示配置文件示例后退出
 	if *showExample {
