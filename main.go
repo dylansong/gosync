@@ -20,6 +20,7 @@ type SyncConfig struct {
 	Name       string   `yaml:"name"`
 	SourceDir  string   `yaml:"source_dir"`
 	TargetDirs []string `yaml:"target_dirs"`
+	Method     string   `yaml:"method"`
 }
 
 const configExample = `sync_configs:
@@ -28,11 +29,13 @@ const configExample = `sync_configs:
     target_dirs:
       - "/path/to/target1"
       - "/path/to/target2"
+    method: "copy"
   - name: "sync2"
     source_dir: "/path/to/source2"
     target_dirs:
       - "/path/to/target3"
       - "/path/to/target4"
+    method: "move"
 `
 
 const helpText = `使用说明:
@@ -120,25 +123,28 @@ func readConfig(configPath string) Config {
 
 // 同步文件
 func syncFiles(config SyncConfig) {
-	// 遍历源目录
+	// 验证 method 值
+	if config.Method != "copy" && config.Method != "move" {
+		log.Printf("警告: 配置 %s 的method值无效 (%s), 默认使用copy", config.Name, config.Method)
+		config.Method = "copy"
+	}
+
 	err := filepath.Walk(config.SourceDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
 
-		// 获取相对路径
 		relPath, err := filepath.Rel(config.SourceDir, path)
 		if err != nil {
 			return err
 		}
 
-		// 对目录不做处理
 		if info.IsDir() {
 			return nil
 		}
 
-		// 复制到每个目标目录
-		for _, targetDir := range config.TargetDirs {
+		// 处理每个目标目录
+		for i, targetDir := range config.TargetDirs {
 			targetPath := filepath.Join(targetDir, relPath)
 
 			// 创建目标目录
@@ -147,12 +153,21 @@ func syncFiles(config SyncConfig) {
 				return err
 			}
 
-			// 复制文件
-			err = copyFile(path, targetPath)
-			if err != nil {
-				return err
+			if config.Method == "copy" || i < len(config.TargetDirs)-1 {
+				// 复制文件
+				err = copyFile(path, targetPath)
+				if err != nil {
+					return err
+				}
+				fmt.Printf("已复制: %s -> %s\n", path, targetPath)
+			} else {
+				// 移动文件（仅在最后一个目标目录时执行）
+				err = os.Rename(path, targetPath)
+				if err != nil {
+					return err
+				}
+				fmt.Printf("已移动: %s -> %s\n", path, targetPath)
 			}
-			fmt.Printf("已复制: %s -> %s\n", path, targetPath)
 		}
 
 		return nil
